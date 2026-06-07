@@ -1,4 +1,3 @@
-// server/webServer.js
 import express from 'express';
 import grpc from '@grpc/grpc-js';
 import protoLoader from '@grpc/proto-loader';
