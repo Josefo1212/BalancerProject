@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// Este package debe coincidir con: grpc.loadPackageDefinition(...).tickets;
+package tickets; 
+
+// Este nombre debe coincidir con: ticketsProto.TicketService.service
+service TicketService {
+  rpc GenerarTicket (TicketRequest) returns (TicketResponse);
+}
+
+message TicketRequest {
+  // Puede ir vacío si el cliente no envía nada especial, o llevar el nombre del usuario
+}
+
+message TicketResponse {
+  bool ok = 1;
+  int32 numero = 2;
+  string procesadoPor = 3;
+  string mensaje = 4;
+}
