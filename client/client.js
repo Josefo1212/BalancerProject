@@ -7,10 +7,7 @@ const logTerminal = document.getElementById('logTerminal');
 
 let contadorPeticiones = 0;
 
-/**
- * Inserta una línea de historial en la mini-terminal de la interfaz
- */
-function agregarLog(mensaje, tipo = 'info') {
+const agregarLog = (mensaje, tipo = 'info') => {
     const linea = document.createElement('div');
     linea.className = `log-line ${tipo}`;
 
@@ -18,20 +15,16 @@ function agregarLog(mensaje, tipo = 'info') {
     linea.textContent = `[${ahora}] ${mensaje}`;
 
     logTerminal.appendChild(linea);
-    logTerminal.scrollTop = logTerminal.scrollHeight; // Auto-scroll al final
+    logTerminal.scrollTop = logTerminal.scrollHeight;
 }
 
-/**
- * Envía una ÚNICA solicitud al presionar el botón
- */
-async function solicitarTicket() {
+const solicitarTicket = async () => {
     contadorPeticiones++;
     totalRequestsSpan.textContent = contadorPeticiones;
 
     const idActual = contadorPeticiones;
-    const tiempoInicio = performance.now(); // Usando el performance nativo del navegador
+    const tiempoInicio = performance.now();
 
-    // Deshabilitar temporalmente para evitar spam en el mismo milisegundo
     btnGenerar.disabled = true;
     agregarLog(`🚀 Enviando petición #${idActual} al balanceador...`, 'info');
 
@@ -54,19 +47,15 @@ async function solicitarTicket() {
         const datos = await respuesta.json();
         const nodo = datos.procesadoPor || 'Desconocido';
 
-        // Actualizamos las tarjetas de estadísticas en la pantalla
         lastNodeSpan.textContent = nodo;
 
-        // Imprimimos los resultados en el historial estético
         agregarLog(`✅ [Petición #${idActual}] HTTP 200 | Latencia: ${latenciaClient}ms | Ticket #${datos.ticketNumero} | Nodo: ${nodo} (CPU: ${datos.usoCpu}%)`, 'success');
 
     } catch (error) {
         agregarLog(`❌ [Petición #${idActual}] Error de red / Gateway apagado: ${error.message}`, 'error');
     } finally {
-        // Habilitar el botón otra vez para el siguiente clic
         btnGenerar.disabled = false;
     }
 }
 
-// Asignar la función al clic del botón del HTML
 btnGenerar.addEventListener('click', solicitarTicket);

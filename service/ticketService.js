@@ -1,7 +1,7 @@
 export class TicketServiceHandler {
     constructor() {
         this.totalTickets = 0;
-        this.nodeName = process.env.NODE_NAME || 'Laptop_LuisMi';
+        this.nodeName ='Laptop_Josefo';
         this.generarTicket = this.generarTicket.bind(this);
     }
 

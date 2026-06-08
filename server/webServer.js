@@ -1,63 +1,97 @@
 import express from 'express';
+import cors from 'cors';
 import grpc from '@grpc/grpc-js';
 import protoLoader from '@grpc/proto-loader';
-import path from 'path';
 import { fileURLToPath } from 'url';
 import { performance } from 'perf_hooks';
-import { obtenerSiguienteNodo, actualizarMetricas } from './balancer.js';
+import { Balancer } from './balancer.js';
+
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 
 const PORT_HTTP = 3000;
 
-// 🛠️ Configuración moderna para emular __dirname en ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROTO_PATH = path.join(__dirname, 'tickets.proto');
+const PROTO_PATH = fileURLToPath(new URL('./ticket.proto', import.meta.url));
 
-// 📦 Cargar el contrato binario
+const listaIps = [
+    'localhost:4000',     // Laptop Josefo (local)
+    '192.168.1.15:4000', // Laptop de Laura
+    '192.168.1.20:4000', // Laptop de LuisMi
+];
+
+const miBalanceador = new Balancer(listaIps);
+
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-    keepCase: true, longs: String, enums: String, defaults: true, oneofs: true
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true
 });
 const ticketsProto = grpc.loadPackageDefinition(packageDefinition).tickets;
 
-// 🧠 Endpoint Gateway
+const GRPC_TIMEOUT_MS = 5000;
+const MAX_REINTENTOS = 3;
+
 app.post('/ticket', (req, res) => {
     const { cliente } = req.body;
-    const nodoDestino = obtenerSiguienteNodo();
+    const nodosIntentados = new Set();
 
-    if (!nodoDestino) {
-        return res.status(500).json({ error: 'No hay nodos gRPC disponibles en la red.' });
-    }
+    const intentarEnviar = () => {
+        const nodoDestino = miBalanceador.obtenerSiguienteNodo();
 
-    // Cronometramos el comportamiento del Wi-Fi de tu teléfono
-    const tiempoInicio = performance.now();
-    const clientGrpc = new ticketsProto.TicketService(nodoDestino, grpc.credentials.createInsecure());
-
-    clientGrpc.GenerarTicket({ cliente: cliente || 'Anónimo' }, (error, response) => {
-        const tiempoFin = performance.now();
-        const latenciaActual = Math.round(tiempoFin - tiempoInicio);
-
-        if (error) {
-            console.error(`❌ El nodo ${nodoDestino} falló la llamada RPC. Aplicando penalización.`);
-            actualizarMetricas(nodoDestino, 999, 99); // Lo sacamos del juego temporalmente
-            return res.status(502).json({ error: 'El nodo distribuido no respondió.' });
+        if (!nodoDestino || nodosIntentados.has(nodoDestino)) {
+            return res.status(503).json({
+                ok: false,
+                error: 'Todos los nodos gRPC están caídos o no disponibles.'
+            });
         }
 
-        const cpuActual = response.usoCpu || 0;
+        nodosIntentados.add(nodoDestino);
 
-        // Retroalimentación al balanceador inteligente
-        actualizarMetricas(nodoDestino, latenciaActual, cpuActual);
+        const tiempoInicio = performance.now();
 
-        console.log(`[📡 Telemetría Wi-Fi] Nodo: ${nodoDestino} | Latencia: ${latenciaActual}ms | CPU: ${cpuActual}%`);
+        const clientGrpc = new ticketsProto.TicketService(nodoDestino, grpc.credentials.createInsecure());
+        const deadline = new Date(Date.now() + GRPC_TIMEOUT_MS);
 
-        res.json(response);
-    });
+        clientGrpc.GenerarTicket({ cliente: cliente || 'Anónimo' }, { deadline }, (error, response) => {
+            const tiempoFin = performance.now();
+            const latenciaActual = Math.round(tiempoFin - tiempoInicio);
+
+            if (error) {
+                console.error(`❌ Error gRPC: El nodo [${nodoDestino}] falló o está incomunicado. (${error.code}: ${error.message})`);
+
+                miBalanceador.penalizarNodoPorFallo(nodoDestino);
+
+                if (nodosIntentados.size < MAX_REINTENTOS) {
+                    console.log(`🔄 Reintentando con otro nodo... (intento ${nodosIntentados.size + 1}/${MAX_REINTENTOS})`);
+                    return intentarEnviar();
+                }
+
+                return res.status(502).json({
+                    ok: false,
+                    error: `El nodo distribuido (${nodoDestino}) experimentó un fallo de red.`
+                });
+            }
+
+            const cpuActual = response.usoCpu || 0;
+
+            miBalanceador.actualizarMetricas(nodoDestino, latenciaActual, cpuActual);
+
+            console.log(`[📡 Telemetría Wi-Fi] Redirigido a: ${nodoDestino} | Latencia: ${latenciaActual}ms | CPU: ${cpuActual}%`);
+
+            res.json(response);
+        });
+    }
+
+    intentarEnviar();
 });
 
 app.listen(PORT_HTTP, () => {
-    console.log(`================================================================`);
-    console.log(`🚀 Gateway ESM Moderno corriendo en http://localhost:${PORT_HTTP}`);
-    console.log(`📡 Monitoreando recursos y latencia en el Hotspot móvil...`);
-    console.log(`================================================================`);
+    console.log(`====================================================================`);
+    console.log(`🚀 Gateway & API Server corriendo en http://localhost:${PORT_HTTP}`);
+    console.log(`📡 Orquestando clúster gRPC mediante lista de IPs estática`);
+    console.log(`====================================================================`);
 });

@@ -1,41 +1,53 @@
-// Registro dinámico de los nodos con sus métricas en tiempo real
-const nodos = {
-    '192.168.1.15:4000': { nombre: 'Laura', latencia: 10, cpu: 10 },
-    '192.168.1.20:4000': { nombre: 'LuisMi', latencia: 10, cpu: 10 },
-    'localhost:4000':     { nombre: 'Josefo', latencia: 5, cpu: 10 }
-};
+export class Balancer {
+    constructor(listaIps = []) {
+        this.nodos = {};
+        this.indiceActual = 0;
 
-/**
- * Elige el mejor nodo basado en el menor costo (Latencia Wi-Fi + CPU)
- * @returns {string|null} IP:PUERTO del nodo ganador
- */
-export const obtenerSiguienteNodo = () => {
-    const listaIps = Object.keys(nodos);
-    if (listaIps.length === 0) return null;
-
-    let mejorNodo = listaIps[0];
-    let menorCosto = Infinity;
-
-    listaIps.forEach(ip => {
-        const info = nodos[ip];
-        // Fórmulita adaptativa: penaliza el lag del Hotspot y la fatiga del procesador
-        const costo = (info.latencia * 1.5) + info.cpu;
-
-        if (costo < menorCosto) {
-            menorCosto = costo;
-            mejorNodo = ip;
+        if (listaIps.length === 0) {
+            listaIps = ['localhost:4000'];
         }
-    });
 
-    return mejorNodo;
-}
+        listaIps.forEach((ip, indice) => {
+            this.nodos[ip.trim()] = {
+                nombre: `Nodo_${indice + 1}`,
+                latencia: 10,
+                cpu: 10,
+                activo: true
+            };
+        });
+    }
 
-/**
- * Actualiza la telemetría devuelta por gRPC
- */
-export const actualizarMetricas = (ip, nuevaLatencia, nuevoCpu) => {
-    if (nodos[ip]) {
-        nodos[ip].latencia = nuevaLatencia;
-        nodos[ip].cpu = nuevoCpu;
+    obtenerSiguienteNodo() {
+        const listaIps = Object.keys(this.nodos);
+        if (listaIps.length === 0) return null;
+
+        const totalNodos = listaIps.length;
+
+        for (let i = 0; i < totalNodos; i++) {
+            const indice = (this.indiceActual + i) % totalNodos;
+            const ip = listaIps[indice];
+
+            if (this.nodos[ip].activo) {
+                this.indiceActual = (indice + 1) % totalNodos;
+                return ip;
+            }
+        }
+
+        return null;
+    }
+
+    actualizarMetricas(ip, nuevaLatencia, nuevoCpu) {
+        if (this.nodos[ip]) {
+            this.nodos[ip].latencia = nuevaLatencia;
+            this.nodos[ip].cpu = nuevoCpu;
+        }
+    }
+
+    penalizarNodoPorFallo(ip) {
+        if (this.nodos[ip]) {
+            this.nodos[ip].activo = false;
+            this.nodos[ip].latencia = 999;
+            this.nodos[ip].cpu = 99;
+        }
     }
 }

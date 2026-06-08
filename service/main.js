@@ -1,12 +1,10 @@
 import grpc from '@grpc/grpc-js';
 import protoLoader from '@grpc/proto-loader';
-import path from 'path';
 import { fileURLToPath } from 'url';
 import { TicketServiceHandler } from './ticketService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROTO_PATH = path.join(__dirname, 'ticket.proto');
+
+const PROTO_PATH = fileURLToPath(new URL('./ticket.proto', import.meta.url));
 
 const main = () => {
     const ticketService = new TicketServiceHandler();
@@ -37,6 +35,4 @@ const main = () => {
     });
 };
 
-if (process.argv[1] === __filename) {
-    main();
-}
+main();
