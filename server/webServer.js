@@ -16,15 +16,15 @@ const PORT_HTTP = 3000;
 const PROTO_PATH = fileURLToPath(new URL('./ticket.proto', import.meta.url));
 
 const listaIps = [
-    '10.147.253.177:4000',     // Laptop Josefo (local)
-    '10.147.253.32:4000', // Laptop de Laura
-    '10.147.253.244:4000', // Laptop de LuisMi
+    '172.20.10.2:4000',     // Laptop Josefo (local)
+    '172.20.10.3:4000', // Laptop de Laura
+    '172.20.10.4:4000', // Laptop de LuisMi
 ];
 
 const nombreNodoPorIp = {
-    '10.147.253.177:4000': 'Laptop_Josefo',
-    '10.147.253.32:4000': 'Laptop_Laura',
-    '10.147.253.244:4000': 'Laptop_LuisMi',
+    '172.20.10.2:4000': 'Laptop_Josefo',
+    '172.20.10.3:4000': 'Laptop_Laura',
+    '172.20.10.4:4000': 'Laptop_LuisMi',
 };
 
 const miBalanceador = new Balancer(listaIps);
