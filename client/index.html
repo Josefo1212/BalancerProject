@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Tickets - Capa Cliente</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>🏎️ Panel de Tickets Distribuidos</h1>
+        <p class="subtitle">Capa Cliente — Arquitectura de Pruebas</p>
+
+        <div class="action-zone">
+            <button id="btnGenerar" class="btn-primary">Generar Ticket</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Total Peticiones</span>
+                <span id="totalRequests" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Último Nodo</span>
+                <span id="lastNode" class="stat-value">-</span>
+            </div>
+        </div>
+
+        <h2>📟 Historial de Conexiones (Live Logs)</h2>
+        <div id="logTerminal" class="terminal">
+            <div class="log-line system">[Sistema] Listo para interactuar con el balanceador en el puerto 3000...</div>
+        </div>
+    </div>
+
+    <script src="client.js"></script>
+</body>
+
+</html>
