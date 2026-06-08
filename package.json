@@ -1,0 +1,21 @@
+{
+  "name": "balancer-project",
+  "version": "1.0.0",
+  "description": "Arquitectura distribuida con Express HTTP Gateway y Microservicios gRPC balanceados",
+  "type": "module",
+  "main": "server/webServer.js",
+  "scripts": {
+    "start-gateway": "node server/webServer.js",
+    "start-service": "node service/main.js",
+    "start-client": "node client/client.js",
+    "benchmark": "autocannon -c 100 -d 10 -p 10 -m POST -b \"{\\\"cliente\\\":\\\"Autocannon-Stress\\\"}\" -H \"Content-Type: application/json\" http://localhost:3000/ticket"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.8",
+    "@grpc/proto-loader": "^0.7.13",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "autocannon": "^7.15.0"
+  }
+}
