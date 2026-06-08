@@ -32,11 +32,7 @@ const main = () => {
             console.error('❌ Error al levantar el servidor gRPC:', error);
             return;
         }
-        // Iniciar el servidor una vez que el bind Async concluyó correctamente
-        server.start();
-
         console.log(`🚀 Microservicio gRPC de Tickets corriendo en ${HOST}`);
-        console.log(`🚦 Puerto enlazado: ${port}`);
         console.log(`💻 Nodo registrado como: ${process.env.NODE_NAME || 'Laptop_LuisMi'}`);
     });
 };

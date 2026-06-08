@@ -5,6 +5,10 @@ const nodos = {
     'localhost:4000':     { nombre: 'Josefo', latencia: 5, cpu: 10 }
 };
 
+/**
+ * Elige el mejor nodo basado en el menor costo (Latencia Wi-Fi + CPU)
+ * @returns {string|null} IP:PUERTO del nodo ganador
+ */
 export const obtenerSiguienteNodo = () => {
     const listaIps = Object.keys(nodos);
     if (listaIps.length === 0) return null;
