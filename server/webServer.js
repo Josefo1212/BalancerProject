@@ -13,7 +13,7 @@ const PORT_HTTP = 3000;
 // 🛠️ Configuración moderna para emular __dirname en ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PROTO_PATH = path.join(__dirname, 'tickets.proto');
+const PROTO_PATH = path.join(__dirname, 'ticket.proto');
 
 // 📦 Cargar el contrato binario
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
