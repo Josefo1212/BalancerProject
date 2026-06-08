@@ -4,7 +4,7 @@ import protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { performance } from 'perf_hooks';
-import { obtenerSiguienteNodo, actualizarMetricas } from './balancer.js'; 
+import { obtenerSiguienteNodo, actualizarMetricas } from './balancer.js';
 const app = express();
 app.use(express.json());
 
@@ -25,7 +25,7 @@ const ticketsProto = grpc.loadPackageDefinition(packageDefinition).tickets;
 app.post('/ticket', (req, res) => {
     const { cliente } = req.body;
     const nodoDestino = obtenerSiguienteNodo();
-    
+
     if (!nodoDestino) {
         return res.status(500).json({ error: 'No hay nodos gRPC disponibles en la red.' });
     }
@@ -43,14 +43,14 @@ app.post('/ticket', (req, res) => {
             actualizarMetricas(nodoDestino, 999, 99); // Lo sacamos del juego temporalmente
             return res.status(502).json({ error: 'El nodo distribuido no respondió.' });
         }
-        
+
         const cpuActual = response.usoCpu || 0;
-        
+
         // Retroalimentación al balanceador inteligente
         actualizarMetricas(nodoDestino, latenciaActual, cpuActual);
 
         console.log(`[📡 Telemetría Wi-Fi] Nodo: ${nodoDestino} | Latencia: ${latenciaActual}ms | CPU: ${cpuActual}%`);
-        
+
         res.json(response);
     });
 });
