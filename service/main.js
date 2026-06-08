@@ -31,7 +31,7 @@ const main = () => {
             return;
         }
         console.log(`🚀 Microservicio gRPC de Tickets corriendo en ${HOST}`);
-        console.log(`💻 Nodo registrado como: ${process.env.NODE_NAME || 'Laptop_LuisMi'}`);
+        console.log(`💻 Nodo registrado como: ${ticketService.nodeName}`);
     });
 };
 

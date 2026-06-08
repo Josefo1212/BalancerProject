@@ -16,10 +16,16 @@ const PORT_HTTP = 3000;
 const PROTO_PATH = fileURLToPath(new URL('./ticket.proto', import.meta.url));
 
 const listaIps = [
-    'localhost:4000',     // Laptop Josefo (local)
-    '192.168.1.15:4000', // Laptop de Laura
-    '192.168.1.20:4000', // Laptop de LuisMi
+    '10.147.253.177:4000',     // Laptop Josefo (local)
+    '10.147.253.32:4000', // Laptop de Laura
+    '10.147.253.244:4000', // Laptop de LuisMi
 ];
+
+const nombreNodoPorIp = {
+    '10.147.253.177:4000': 'Laptop_Josefo',
+    '10.147.253.32:4000': 'Laptop_Laura',
+    '10.147.253.244:4000': 'Laptop_LuisMi',
+};
 
 const miBalanceador = new Balancer(listaIps);
 
@@ -52,11 +58,14 @@ app.post('/ticket', (req, res) => {
         nodosIntentados.add(nodoDestino);
 
         const tiempoInicio = performance.now();
+        const nombreNodo = nombreNodoPorIp[nodoDestino] || nodoDestino;
 
         const clientGrpc = new ticketsProto.TicketService(nodoDestino, grpc.credentials.createInsecure());
         const deadline = new Date(Date.now() + GRPC_TIMEOUT_MS);
+        const metadata = new grpc.Metadata();
+        metadata.set('node-name', nombreNodo);
 
-        clientGrpc.GenerarTicket({ cliente: cliente || 'Anónimo' }, { deadline }, (error, response) => {
+        clientGrpc.GenerarTicket({ cliente: cliente || 'Anónimo' }, metadata, { deadline }, (error, response) => {
             const tiempoFin = performance.now();
             const latenciaActual = Math.round(tiempoFin - tiempoInicio);
 
