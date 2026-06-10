@@ -16,5 +16,7 @@ message TicketResponse {
   int32 ticketNumero = 2;
   string procesadoPor = 3;
   string mensaje = 4;
-  int32 usoCpu = 5; 
+  int32 usoCpu = 5;
+  int32 usoRam = 6;
+  int32 numProcesos = 7;
 }

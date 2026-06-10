@@ -41,6 +41,24 @@ const ticketsProto = grpc.loadPackageDefinition(packageDefinition).tickets;
 const GRPC_TIMEOUT_MS = 5000;
 const MAX_REINTENTOS = 3;
 
+// Pool de conexiones gRPC reutilizables para evitar crear un cliente nuevo por petición
+const poolGrpc = {};
+
+function obtenerClienteGrpc(nodoDestino) {
+    if (!poolGrpc[nodoDestino]) {
+        poolGrpc[nodoDestino] = new ticketsProto.TicketService(
+            nodoDestino,
+            grpc.credentials.createInsecure(),
+            {
+                'grpc.keepalive_time_ms': 10000,
+                'grpc.keepalive_timeout_ms': 5000,
+                'grpc.keepalive_permit_without_calls': 1,
+            }
+        );
+    }
+    return poolGrpc[nodoDestino];
+}
+
 app.post('/ticket', (req, res) => {
     const { cliente } = req.body;
     const nodosIntentados = new Set();
@@ -60,7 +78,7 @@ app.post('/ticket', (req, res) => {
         const tiempoInicio = performance.now();
         const nombreNodo = nombreNodoPorIp[nodoDestino] || nodoDestino;
 
-        const clientGrpc = new ticketsProto.TicketService(nodoDestino, grpc.credentials.createInsecure());
+        const clientGrpc = obtenerClienteGrpc(nodoDestino);
         const deadline = new Date(Date.now() + GRPC_TIMEOUT_MS);
         const metadata = new grpc.Metadata();
         metadata.set('node-name', nombreNodo);
@@ -85,11 +103,18 @@ app.post('/ticket', (req, res) => {
                 });
             }
 
+            // Extraer las tres métricas de telemetría del microservicio
             const cpuActual = response.usoCpu || 0;
+            const ramActual = response.usoRam || 0;
+            const procesosActuales = response.numProcesos || 0;
 
-            miBalanceador.actualizarMetricas(nodoDestino, latenciaActual, cpuActual);
+            // Actualizar el balanceador con la telemetría completa
+            miBalanceador.actualizarMetricas(nodoDestino, latenciaActual, cpuActual, ramActual, procesosActuales);
 
-            console.log(`[📡 Telemetría Wi-Fi] Redirigido a: ${nodoDestino} | Latencia: ${latenciaActual}ms | CPU: ${cpuActual}%`);
+            console.log(
+                `[📡 Telemetría Wi-Fi] Redirigido a: ${nombreNodo} (${nodoDestino}) | ` +
+                `Latencia: ${latenciaActual}ms | CPU: ${cpuActual}% | RAM: ${ramActual}% | Procesos: ${procesosActuales}`
+            );
 
             res.json(response);
         });
@@ -101,6 +126,7 @@ app.post('/ticket', (req, res) => {
 app.listen(PORT_HTTP, () => {
     console.log(`====================================================================`);
     console.log(`🚀 Gateway & API Server corriendo en http://localhost:${PORT_HTTP}`);
-    console.log(`📡 Orquestando clúster gRPC mediante lista de IPs estática`);
+    console.log(`📡 Balanceador Load-Aware (Least Loaded) con telemetría de CPU, RAM y Procesos`);
+    console.log(`🔗 Nodos configurados: ${listaIps.join(', ')}`);
     console.log(`====================================================================`);
 });

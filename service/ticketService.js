@@ -1,11 +1,20 @@
 import os from 'os';
+import { exec } from 'child_process';
 
 export class TicketServiceHandler {
     constructor(nodeName = 'Nodo_desconocido') {
         this.totalTickets = 0;
         this.nodeName = nodeName;
+
+        // Cache de procesos para no bloquear cada petición con un exec
+        this._procesosCache = 150; // Fallback base
+        this._actualizarContadorProcesos(); // Primera medición inmediata
+        this._intervaloProcesos = setInterval(() => this._actualizarContadorProcesos(), 2000);
+
         this.generarTicket = this.generarTicket.bind(this);
     }
+
+    // ─────────────────────────── CPU ───────────────────────────
 
     obtenerMuestraCpu() {
         const cpus = os.cpus();
@@ -51,6 +60,51 @@ export class TicketServiceHandler {
         });
     }
 
+    // ─────────────────────────── RAM ───────────────────────────
+
+    calcularUsoRam() {
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usoRam = 100 * (1 - freeMem / totalMem);
+        return Math.max(0, Math.min(100, Math.round(usoRam)));
+    }
+
+    // ─────────────────────── PROCESOS ─────────────────────────
+
+    _actualizarContadorProcesos() {
+        const esWindows = process.platform === 'win32';
+        const comando = esWindows ? 'tasklist' : 'ps -e | wc -l';
+
+        exec(comando, { timeout: 3000 }, (error, stdout) => {
+            if (error) {
+                // Si falla, mantiene el último valor cacheado o el fallback
+                return;
+            }
+
+            try {
+                if (esWindows) {
+                    // En Windows, tasklist devuelve una línea por proceso + encabezados.
+                    // Contamos líneas no vacías y restamos las 3 líneas de encabezado.
+                    const lineas = stdout.split('\n').filter((l) => l.trim().length > 0);
+                    this._procesosCache = Math.max(0, lineas.length - 3);
+                } else {
+                    // En Linux/macOS, "ps -e | wc -l" devuelve el conteo directo.
+                    // Se resta 1 por la línea de encabezado de ps.
+                    const conteo = parseInt(stdout.trim(), 10);
+                    this._procesosCache = isNaN(conteo) ? 150 : Math.max(0, conteo - 1);
+                }
+            } catch {
+                // Fallback silencioso: no rompe el flujo
+            }
+        });
+    }
+
+    obtenerNumeroProcesos() {
+        return this._procesosCache;
+    }
+
+    // ──────────────────── HANDLER gRPC ────────────────────────
+
     async generarTicket(call, callback) {
         this.totalTickets += 1;
 
@@ -60,10 +114,17 @@ export class TicketServiceHandler {
         }
 
         try {
+            // Recolectar las tres métricas reales de hardware
             const usoCpu = await this.medirUsoCpuReal();
+            const usoRam = this.calcularUsoRam();
+            const numProcesos = this.obtenerNumeroProcesos();
+
             const cliente = call.request?.cliente || 'desconocido';
 
-            console.log(`[${this.nodeName}] ⚙️ Procesando petición de ${cliente}. Ticket emitido: #${this.totalTickets} | CPU: ${usoCpu}%`);
+            console.log(
+                `[${this.nodeName}] ⚙️ Procesando petición de ${cliente}. ` +
+                `Ticket #${this.totalTickets} | CPU: ${usoCpu}% | RAM: ${usoRam}% | Procesos: ${numProcesos}`
+            );
 
             callback(null, {
                 ok: true,
@@ -71,6 +132,8 @@ export class TicketServiceHandler {
                 procesadoPor: this.nodeName,
                 mensaje: `Ticket generado exitosamente en el nodo gRPC: ${this.nodeName}`,
                 usoCpu,
+                usoRam,
+                numProcesos,
             });
         } catch (error) {
             callback(error);
